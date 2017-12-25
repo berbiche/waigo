@@ -1,0 +1,15 @@
+{
+    "editor.insertSpaces": false,
+    "files.autoSave": "onFocusChange",
+
+    "go.enableCodeLens": {
+        "references": true,
+        "runtest": true
+    },
+    "[go]": {
+        "editor.insertSpaces": false,
+        "editor.formatOnSave": true,
+    },
+    "go.gopath": "${workspaceRoot}",
+    "go.gocodeAutoBuild": true
+}
