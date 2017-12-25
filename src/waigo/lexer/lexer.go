@@ -29,6 +29,16 @@ func (l *Lexer) readIndentifier() string {
 	return l.input[position:l.position]
 }
 
+// returns a slice of the input containing the number
+func (l *Lexer) readNumber() string {
+	initialPosition := l.position
+
+	for isDigit(l.ch) {
+		l.readChar()
+	}
+	return l.input[initialPosition:l.position]
+}
+
 // skips whitespace until next token
 func (l *Lexer) eatWhitespace() {
 	for l.ch == ' ' || l.ch == '\t' || l.ch == '\n' || l.ch == '\r' {
@@ -65,6 +75,10 @@ func (l *Lexer) NextToken() token.Token {
 			tok.Literal = l.readIndentifier()
 			tok.Type = token.LookupIdentifier(tok.Literal)
 			return tok
+		} else if isDigit(l.ch) {
+			tok.Literal = l.readNumber()
+			tok.Type = token.INT
+			return tok
 		}
 		tok = newToken(token.ILLEGAL, l.ch)
 	}
@@ -97,4 +111,8 @@ func isValidLetterForIdentifier(ch byte) bool {
 		return true
 	}
 	return false
+}
+
+func isDigit(ch byte) bool {
+	return '0' <= ch && ch <= '9'
 }
