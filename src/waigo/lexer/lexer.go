@@ -1,12 +1,90 @@
 package lexer
 
-import "waigo/token"
+import (
+	"fmt"
+	"waigo/token"
+)
 
 type Lexer struct {
 	input        string
-	position     int
-	readPosition int
-	ch           byte
+	position     int  // current position in input (points to current char)
+	readPosition int  // current reading position in input (after current char)
+	ch           byte // current char under examination
+}
+
+// New returns a new instance of the lexer struct
+func New(input string) *Lexer {
+	l := &Lexer{input: input}
+	l.readChar()
+	return l
+}
+
+// NextToken parses the next token in the string
+func (l *Lexer) NextToken() token.Token {
+	var tok token.Token
+
+	l.eatWhitespace()
+
+	switch l.ch {
+	case '=':
+		if l.peekChar() == '=' {
+			ch := l.ch
+			l.readChar()
+			literal := string(ch) + string(l.ch)
+			tok = token.Token{Type: token.EQ, Literal: literal}
+		} else {
+			tok = newToken(token.ASSIGN, l.ch)
+		}
+	case '+':
+		tok = newToken(token.PLUS, l.ch)
+	case '-':
+		tok = newToken(token.MINUS, l.ch)
+	case '!':
+		if l.peekChar() == '=' {
+			ch := l.ch
+			l.readChar()
+			literal := string(ch) + string(l.ch)
+			tok = token.Token{Type: token.NOT_EQ, Literal: literal}
+		} else {
+			tok = newToken(token.BANG, l.ch)
+		}
+	case '/':
+		tok = newToken(token.SLASH, l.ch)
+	case '*':
+		tok = newToken(token.ASTERISK, l.ch)
+	case '<':
+		tok = newToken(token.LT, l.ch)
+	case '>':
+		tok = newToken(token.GT, l.ch)
+	case ';':
+		tok = newToken(token.SEMICOLON, l.ch)
+	case ',':
+		tok = newToken(token.COMMA, l.ch)
+	case '(':
+		tok = newToken(token.LPAREN, l.ch)
+	case ')':
+		tok = newToken(token.RPAREN, l.ch)
+	case '{':
+		tok = newToken(token.LBRACE, l.ch)
+	case '}':
+		tok = newToken(token.RBRACE, l.ch)
+	case 0:
+		tok = token.Token{Type: token.EOF, Literal: ""}
+	default:
+		if isValidLetterForIdentifier(l.ch) {
+			tok.Literal = l.readIndentifier()
+			tok.Type = token.LookupIdentifier(tok.Literal)
+			return tok
+		} else if isDigit(l.ch) {
+			tok = token.Token{Type: token.INT, Literal: l.readNumber()}
+			return tok
+		}
+		fmt.Printf("%q\n", l.ch)
+		tok = newToken(token.ILLEGAL, l.ch)
+	}
+
+	l.readChar()
+	return tok
 }
 
 func (l *Lexer) readChar() {
@@ -39,73 +117,19 @@ func (l *Lexer) readNumber() string {
 	return l.input[initialPosition:l.position]
 }
 
+// returns the next char without advancing the read position in the input
+func (l *Lexer) peekChar() byte {
+	if l.readPosition >= len(l.input) {
+		return 0
+	}
+	return l.input[l.readPosition]
+}
+
 // skips whitespace until next token
 func (l *Lexer) eatWhitespace() {
 	for l.ch == ' ' || l.ch == '\t' || l.ch == '\n' || l.ch == '\r' {
 		l.readChar()
 	}
-}
-
-// NextToken parses the next token in the string
-func (l *Lexer) NextToken() token.Token {
-	var tok token.Token
-
-	l.eatWhitespace()
-
-	switch l.ch {
-	case '=':
-		tok = newToken(token.ASSIGN, l.ch)
-	case '+':
-		tok = newToken(token.PLUS, l.ch)
-	case '-':
-		tok = newToken(token.MINUS, l.ch)
-	case '!':
-		tok = newToken(token.BANG, l.ch)
-	case '/':
-		tok = newToken(token.SLASH, l.ch)
-	case '*':
-		tok = newToken(token.ASTERISK, l.ch)
-	case '<':
-		tok = newToken(token.LT, l.ch)
-	case '>':
-		tok = newToken(token.GT, l.ch)
-	case ';':
-		tok = newToken(token.SEMICOLON, l.ch)
-	case ',':
-		tok = newToken(token.PLUS, l.ch)
-	case '(':
-		tok = newToken(token.LPAREN, l.ch)
-	case ')':
-		tok = newToken(token.RPAREN, l.ch)
-	case '{':
-		tok = newToken(token.LBRACE, l.ch)
-	case '}':
-		tok = newToken(token.RBRACE, l.ch)
-	case '0':
-		tok.Literal = ""
-		tok.Type = token.EOF
-	default:
-		if isValidLetterForIdentifier(l.ch) {
-			tok.Literal = l.readIndentifier()
-			tok.Type = token.LookupIdentifier(tok.Literal)
-			return tok
-		} else if isDigit(l.ch) {
-			tok.Literal = l.readNumber()
-			tok.Type = token.INT
-			return tok
-		}
-		tok = newToken(token.ILLEGAL, l.ch)
-	}
-
-	l.readChar()
-	return tok
-}
-
-// New returns a new instance of the lexer struct
-func New(input string) *Lexer {
-	l := &Lexer{input: input}
-	l.readChar()
-	return l
 }
 
 // newToken constructs a new Token struct
@@ -115,16 +139,12 @@ func newToken(tokenType token.TokenType, ch byte) token.Token {
 
 // isValidLetterForIdentifier returns whether the character is allowed in an identifier
 func isValidLetterForIdentifier(ch byte) bool {
-	switch {
-	case 'a' <= ch && ch <= 'z':
-	case 'A' <= ch && ch <= 'Z':
-	case ch == '_':
-	case ch == '$':
-	case ch == '!':
-	case ch == '?':
-		return true
-	}
-	return false
+	return 'a' <= ch && ch <= 'z' ||
+		'A' <= ch && ch <= 'Z' ||
+		ch == '_' ||
+		ch == '$' ||
+		ch == '!' ||
+		ch == '?'
 }
 
 func isDigit(ch byte) bool {
